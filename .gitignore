@@ -1,0 +1,35 @@
+*.py[co]
+*~
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+
+#Translations
+*.mo
+
+local_settings.py
+.sass-cache
+.DS_Store
+
+localvisor.conf
+run
+.vagrant
+
+bower_components
