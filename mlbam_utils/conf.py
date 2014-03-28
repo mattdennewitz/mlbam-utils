@@ -5,6 +5,12 @@ import datetime
 MONTH_BOUNDARIES = (2, 11) # 2-11
 YEAR_BOUNDARIES = (1923, datetime.date.today().year)
 
+DEFAULT_FILES = (
+    'game.xml',
+    'linescore.xml',
+    'inning/inning_all.xml',
+)
+
 # logging configuration
 LOGGING = {
     'version': 1,
@@ -26,7 +32,7 @@ LOGGING = {
     'loggers': {
         'mlbam-utils': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'DEBUG',
         },
     }
 }

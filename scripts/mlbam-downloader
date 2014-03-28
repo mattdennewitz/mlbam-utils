@@ -6,13 +6,14 @@
 import argparse
 import calendar
 import datetime
-import logging
+import os
 
 from mlbam_utils import conf, download
 
 
 class ParseDateAction(argparse.Action):
     """Parses a simple date from a string"""
+
     def __call__(self, parser, args, values, opt=None):
         try:
             value = (datetime.datetime
@@ -23,6 +24,17 @@ class ParseDateAction(argparse.Action):
             parser.error('Given date must by in YYYY-MM-DD format.')
 
 
+class ValidatePathAction(argparse.Action):
+    """Validates a path"""
+
+    def __call__(self, parser, args, values, opt=None):
+        path = os.path.realpath(os.path.expanduser(values))
+        if not os.path.isdir(path):
+            parser.error('Given path must exist!')
+
+        setattr(args, self.dest, path)
+
+
 def generate_date_range(year, month=None):
     """Produces every date in a year,
     optionally limited to a certain month.
@@ -30,7 +42,7 @@ def generate_date_range(year, month=None):
 
     cal = calendar.Calendar()
 
-    if month:
+    if month is not None:
         month_range = [month]
     else:
         month_range = range(conf.MONTH_BOUNDARIES[0],
@@ -38,6 +50,10 @@ def generate_date_range(year, month=None):
 
     for month in month_range:
         for d in cal.itermonthdates(year, month):
+            if not d.month == month:
+                # filter out week-range dates given by "itermonthdates"
+                continue
+
             yield d
 
 
@@ -54,10 +70,15 @@ if __name__ == '__main__':
                       help='Scrape for specific date, in YYYY-MM-DD format.')
     pars.add_argument('-f', dest='files', action='append',
                       help='Specify which files to download. May be given multiple times. '
-                           'Default: %s' % ', '.join(download.DEFAULT_FILES))
+                           'Default: %s' % ', '.join(conf.DEFAULT_FILES))
+    pars.add_argument('-o', dest='output', action=ValidatePathAction,
+                      help='Output path.', required=True)
+    pars.add_argument('-fl', dest='fail_loudly', action='store_true',
+                      default=False,
+                      help='When given, app will terminate on download errors.')
     opts = pars.parse_args()
 
-    if opts.year < 1923 or opts.year > today.year:
+    if opts.year and (opts.year < 1923 or opts.year > today.year):
         pars.error('-y must be between 1923 and %s' % today.year)
 
     # confirm a month and year are specificed
@@ -67,10 +88,13 @@ if __name__ == '__main__':
     # generate timespan
     if opts.year and not opts.month:
         date_gen = generate_date_range(opts.year)
-        print list(date_gen)
-    if opts.month:
+    elif opts.month:
         date_gen = generate_date_range(opts.year, opts.month)
     else:
         date_gen = (opts.date, )
 
-    download.download_data(date_seq=date_gen, files=opts.files)
+    # begin download
+    download.download_data(date_seq=date_gen,
+                           output=opts.output,
+                           files=opts.files,
+                           fail_silently=not opts.fail_loudly)
