@@ -2,7 +2,7 @@ import datetime
 
 
 # valid data windows
-MONTH_BOUNDARIES = (2, 11) # 2-11
+MONTH_BOUNDARIES = (3, 11) # march - nov
 YEAR_BOUNDARIES = (1923, datetime.date.today().year)
 
 DEFAULT_FILES = (

@@ -40,15 +40,12 @@ def find_games_for_date(date, fail_silently=True):
     except requests.exceptions.RequestException as exc:
         log.error('[%s] Could not retreive list of games for date: %s' % (
             date_url, exc))
-
-        if not fail_silently:
-            raise
+        raise
 
     if resp.status_code != requests.codes.ok:
         msg = '[%s] Request failed: %s' % (date_url, resp.reason)
         log.error(msg)
-        if not fail_silently:
-            raise requests.exceptions.RequestException(msg)
+        raise requests.exceptions.RequestException(msg)
 
     # parse doc, extract links
     doc = html.fromstring(resp.content)
@@ -61,13 +58,15 @@ def find_games_for_date(date, fail_silently=True):
     ]
 
 
-def download_data(date_seq, output, files=DEFAULT_FILES, fail_silently=True):
+def download_data(date_seq, output, files=DEFAULT_FILES,
+                  skip_if_exists=False, fail_silently=True):
     """Downloads a set of files within a certain date range.
     """
 
     log.debug('Starting download. Writing to ' + output)
 
-    files = DEFAULT_FILES
+    if files is None:
+        files = DEFAULT_FILES
 
     for date in date_seq:
         # find all games for date
@@ -82,15 +81,23 @@ def download_data(date_seq, output, files=DEFAULT_FILES, fail_silently=True):
             # create game output dir if nec.
             mkdir(output_dir)
 
-            for filename in DEFAULT_FILES:
+            for filename in files:
+                output_fn = os.path.join(output_dir, filename)
+
+                if os.path.exists(output_fn) and skip_if_exists:
+                    continue
+
                 # create ultimate output dir if necessary
                 if '/' in filename:
-                    os.makedirs(
-                        os.path.join(
-                            output_dir,
-                            os.path.join(*filename.rstrip('/').split('/')[:-1])
+                    try:
+                        os.makedirs(
+                            os.path.join(
+                                output_dir,
+                                os.path.join(*filename.rstrip('/').split('/')[:-1])
+                            )
                         )
-                    )
+                    except OSError:
+                        pass
 
                 target_file_url = urlparse.urljoin(url, filename)
 
@@ -101,6 +108,8 @@ def download_data(date_seq, output, files=DEFAULT_FILES, fail_silently=True):
 
                     if not fail_silently:
                         raise
+                    else:
+                        continue
 
                 if not resp.status_code == requests.codes.ok:
                     msg = 'Could not download %s: %s' % (target_file_url, resp.reason)
@@ -108,8 +117,9 @@ def download_data(date_seq, output, files=DEFAULT_FILES, fail_silently=True):
 
                     if not fail_silently:
                         raise requests.exceptions.RequestException(msg)
+                    else:
+                        continue
 
                 # write the file
-                output_fn = os.path.join(output_dir, filename)
                 log.info('Writing ' + output_fn)
                 open(output_fn, 'w').write(resp.content)
